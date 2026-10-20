@@ -1,0 +1,47 @@
+services:
+  vllm-embedding:
+    image: vllm/vllm-openai:v0.22.1-cu129
+    container_name: vllm-embedding
+    restart: always
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ipc: "host"
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "0"
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN}
+      MODEL_NAME: ${LLM_EMBEDDING_MODEL}
+    ports:
+      # <Port exposed> : <VLLM Port running inside container>
+      - '8082:8000'
+    expose:
+      - '8089'
+    networks:
+      - shared_network
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      - ./chat_template.jinja:/chat_template.jinja
+    command: --model ${LLM_EMBEDDING_MODEL} --gpu-memory-utilization 0.5 --dtype float16 --port 8000 --tensor-parallel-size 1 --max-num-seqs 8  --trust-remote-code  --max-num-batched-tokens 16384
+    # --chat-template /chat_template.jinja
+
+    # --max-model-len 16384  --enable-chunked-prefill
+    
+    #  --chat-template /chat_template.jinja
+    
+    # --max_model_len 33768    
+    # --max_model_len 33768
+    # --max_model_len 33768
+    ## If the model does not provide chat template, use the parameter --chat-template /chat_template.jinja
+    ## IF the model is 8B use the following parameters
+    # --max-num-seqs 196 
+    # --chat-template /chat_template.jinja
+    # command: --model ${MODEL_NAME} --enable-chunked-prefill --gpu_memory_utilization 0.95 --dtype float16 --port 8000 --tensor-parallel-size 2 --chat-template /chat_template.jinja  --max_model_len 28028
+    # --max_model_len 28028
+networks:
+  shared_network:
+    name: shared_network

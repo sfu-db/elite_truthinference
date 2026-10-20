@@ -1,0 +1,52 @@
+services:
+  vllm-cpu:
+    image: vllm/vllm-openai-cpu:v0.22.1-x86_64
+    container_name: vllm-cpu
+    restart: unless-stopped
+    ipc: host
+    ports:
+      - "8000:8000"
+    environment:
+      # GiB for KV cache only; model weights and runtime need additional RAM.
+      VLLM_CPU_KVCACHE_SPACE: "4"
+      VLLM_CPU_OMP_THREADS_BIND: "auto"
+      VLLM_CPU_NUM_OF_RESERVED_CPU: "1"
+      # Keep the CPU image's LD_PRELOAD (tcmalloc and Intel OpenMP).
+    volumes:
+      # Cache models on host to prevent redownloading on restart
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    command:
+      - Qwen/Qwen3-1.7B
+      - --served-model-name
+      - Qwen/Qwen3-1.7B
+      - --dtype
+      - bfloat16
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --max-model-len
+      - "32768"
+      - --max-num-seqs
+      - "4"
+      - --reasoning-parser
+      - qwen3
+      - --default-chat-template-kwargs
+      - '{"enable_thinking": false}'
+      - --generation-config
+      - vllm
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).close()"
+      interval: 30s
+      timeout: 10s
+      start_period: 10m
+      retries: 5
+    networks:
+      - shared_network
+networks:
+  shared_network:
+    name: shared_network
